@@ -1,0 +1,63 @@
+/* CSS变量定义 */
+:root {
+  /* 主题色 */
+  --primary-color: rgb(168, 139, 251);
+  --primary-gradient-start: rgb(99, 102, 241);
+  --primary-gradient-end: rgb(168, 139, 251);
+  
+  /* 透明度变体 */
+  --primary-alpha-05: rgba(168, 139, 251, 0.05);
+  --primary-alpha-08: rgba(168, 139, 251, 0.08);
+  --primary-alpha-20: rgba(168, 139, 251, 0.2);
+  --primary-alpha-40: rgba(168, 139, 251, 0.4);
+  --primary-alpha-50: rgba(168, 139, 251, 0.5);
+  --primary-alpha-90: rgba(168, 139, 251, 0.9);
+  --primary-alpha-95: rgba(168, 139, 251, 0.95);
+  
+  --gradient-start-alpha-95: rgba(99, 102, 241, 0.95);
+  --gradient-end-alpha-95: rgba(168, 139, 251, 0.95);
+  
+  /* 黑白色系 */
+  --black-alpha-05: rgba(0, 0, 0, 0.05);
+  --black-alpha-40: rgba(0, 0, 0, 0.4);
+  --black-alpha-60: rgba(0, 0, 0, 0.6);
+  --white: #fff;
+  --white-alpha-30: rgba(255, 255, 255, 0.3);
+  
+  /* 阴影 */
+  --shadow-glow: 0 0 15px var(--primary-alpha-40), 0 0 30px var(--primary-alpha-20);
+  --shadow-glow-strong: 0 0 20px var(--primary-alpha-50), 0 4px 20px var(--black-alpha-40);
+  --shadow-soft: 0 2px 10px var(--primary-alpha-40);
+}
+
+/* 基础重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: transparent;
+}
+
+/* 虚线边框样式 - 带发光效果 */
+.dashed-border {
+  border: 2px dashed var(--primary-alpha-90);
+  box-shadow: var(--shadow-glow);
+}
+
+/* 淡入动画 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,0 +1,51 @@
+/* Region Selector Styles */
+body {
+  width: 100vw;
+  height: 100vh;
+  cursor: crosshair;
+  background: var(--black-alpha-05);
+}
+
+.tip {
+  position: fixed;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  background: linear-gradient(
+    135deg,
+    var(--gradient-start-alpha-95),
+    var(--gradient-end-alpha-95)
+  );
+  color: var(--white);
+  border: 1px solid var(--white-alpha-30);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: var(--shadow-glow-strong);
+  z-index: 10000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.selection-box {
+  position: absolute;
+  background: var(--primary-alpha-08);
+  display: none;
+  pointer-events: none;
+  border-radius: 2px;
+}
+
+.size-info {
+  position: absolute;
+  top: -25px;
+  left: -10px;
+  padding: 6px 12px;
+  background: var(--primary-alpha-90);
+  color: var(--white);
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: var(--shadow-soft);
+  display: none;
+}

@@ -18,12 +18,37 @@ async function captureRegion(region) {
   const { x, y, width, height } = region;
 
   try {
+    // 找出区域所在的显示器
+    const displays = screen.getAllDisplays();
+    let targetDisplay = null;
+
+    for (const display of displays) {
+      const { x: dx, y: dy, width: dw, height: dh } = display.bounds;
+      // 检查区域中心点是否在此显示器内
+      const centerX = x + width / 2;
+      const centerY = y + height / 2;
+
+      if (
+        centerX >= dx &&
+        centerX < dx + dw &&
+        centerY >= dy &&
+        centerY < dy + dh
+      ) {
+        targetDisplay = display;
+        break;
+      }
+    }
+
+    if (!targetDisplay) {
+      targetDisplay = screen.getPrimaryDisplay();
+    }
+
     // 获取屏幕截图
     const sources = await desktopCapturer.getSources({
       types: ["screen"],
       thumbnailSize: {
-        width: screen.getPrimaryDisplay().bounds.width,
-        height: screen.getPrimaryDisplay().bounds.height,
+        width: targetDisplay.bounds.width,
+        height: targetDisplay.bounds.height,
       },
     });
 
@@ -31,13 +56,29 @@ async function captureRegion(region) {
       throw new Error("无法获取屏幕截图");
     }
 
-    // 使用第一个屏幕的截图
-    const screenshot = sources[0].thumbnail;
+    // 找到目标显示器对应的截图源
+    let targetSource = sources[0];
+
+    // desktopCapturer 返回的 sources 顺序可能和 displays 不同
+    // 如果有多个屏幕，需要根据显示器ID匹配
+    if (sources.length > 1) {
+      // sources 的 name 通常包含 "Screen 1", "Screen 2" 等
+      // 这里简化处理：主显示器用第一个，副显示器用第二个
+      const isPrimaryDisplay =
+        targetDisplay.id === screen.getPrimaryDisplay().id;
+      targetSource = isPrimaryDisplay ? sources[0] : sources[1] || sources[0];
+    }
+
+    const screenshot = targetSource.thumbnail;
     const buffer = screenshot.toPNG();
+
+    // 将全局坐标转换为显示器相对坐标
+    const relativeX = x - targetDisplay.bounds.x;
+    const relativeY = y - targetDisplay.bounds.y;
 
     // 裁剪指定区域
     const croppedBuffer = await sharp(buffer)
-      .extract({ left: x, top: y, width, height })
+      .extract({ left: relativeX, top: relativeY, width, height })
       .toBuffer();
 
     // 保存到临时文件
@@ -72,9 +113,6 @@ async function callPythonTranslate(screenshotPath, region) {
     const projectRoot = path.join(__dirname, "../..");
     const venvPython = path.join(projectRoot, "venv/bin/python3");
     const pythonCmd = fs.existsSync(venvPython) ? venvPython : "python3";
-
-    console.log("🐍 调用Python服务:", pythonCmd);
-    console.log("📜 脚本路径:", pythonScript);
 
     // 启动Python进程
     const python = spawn(pythonCmd, [

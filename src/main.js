@@ -61,16 +61,11 @@ function closeAllTranslationWindows() {
  * @param {Array} textBlocks - 文本块数组
  */
 function createTranslationWindows(region, textBlocks) {
-  // 先关闭之前的所有翻译窗口
   closeAllTranslationWindows();
 
-  console.log(`\n✅ 创建 ${textBlocks.length} 个翻译窗口\n`);
-
-  textBlocks.forEach((block, index) => {
-    console.log(`[文本块 ${index + 1}]`);
+  textBlocks.forEach((block) => {
     const win = createTranslationWindow(block, region.x, region.y);
     translationWindows.push(win);
-    console.log("");
   });
 
   // 翻译窗口持久保留，不自动关闭
@@ -90,7 +85,6 @@ ipcMain.on("start-region-selection", () => {
 // 区域选择完成
 ipcMain.on("region-selected", (event, region) => {
   monitoredRegion = region;
-  console.log("📌 区域已选择:", region);
 
   // 关闭选择窗口
   if (regionSelector) {
@@ -132,32 +126,17 @@ function handleSelectRegion() {
  * 翻译监听区域
  */
 async function handleTranslate() {
-  if (!monitoredRegion) {
-    console.log("⚠️  请先选择监听区域 (Cmd+Shift+C)");
-    return;
-  }
-
-  console.log("🔄 开始翻译区域:", monitoredRegion);
+  if (!monitoredRegion) return;
 
   try {
-    // 1. 截图
-    console.log("📸 正在截图...");
     const screenshotPath = await captureRegion(monitoredRegion);
-    console.log("✅ 截图完成:", screenshotPath);
-
-    // 2. 识别和翻译
-    console.log("🔍 正在识别和翻译...");
     const result = await callPythonTranslate(screenshotPath, monitoredRegion);
 
-    // 3. 显示翻译结果
     if (result.success && result.textBlocks) {
-      console.log(`✅ 识别到 ${result.textBlocks.length} 个文本块`);
       createTranslationWindows(monitoredRegion, result.textBlocks);
-    } else {
-      console.error("❌ 翻译失败:", result.error || "未知错误");
     }
   } catch (error) {
-    console.error("❌ 翻译过程出错:", error);
+    console.error("翻译错误:", error);
   }
 }
 
@@ -166,11 +145,6 @@ async function handleTranslate() {
  */
 function handleToggleVisibility() {
   translationsVisible = !translationsVisible;
-  console.log(
-    `${translationsVisible ? "👁️ " : "🙈"} 翻译${
-      translationsVisible ? "显示" : "隐藏"
-    }`
-  );
 
   // 切换所有翻译窗口的显示状态
   translationWindows.forEach((win) => {

@@ -11,15 +11,22 @@ const path = require("path");
  * @returns {BrowserWindow} 区域选择窗口实例
  */
 function createRegionSelector() {
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  // 获取鼠标当前所在的显示器
+  const cursorPoint = screen.getCursorScreenPoint();
+  const currentDisplay = screen.getDisplayNearestPoint(cursorPoint);
+
+  const { x, y, width, height } = currentDisplay.bounds;
 
   const selector = new BrowserWindow({
+    x,
+    y,
     width,
     height,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
     skipTaskbar: true,
+    hasShadow: false,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -50,13 +57,15 @@ function createRegionOverlay(x, y, width, height) {
     resizable: false,
     skipTaskbar: true,
     focusable: false,
-    ignoreMouseEvents: true,
+    hasShadow: false,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
     },
   });
 
+  // 使用 setIgnoreMouseEvents 的特殊选项来保持渲染质量
+  overlay.setIgnoreMouseEvents(true, { forward: true });
   overlay.setAlwaysOnTop(true, "screen-saver");
   overlay.setVisibleOnAllWorkspaces(true);
   overlay.loadFile(path.join(__dirname, "../views/region-overlay.html"));
@@ -94,20 +103,31 @@ function createTranslationWindow(textBlock, regionX, regionY) {
   let windowX = absoluteX;
   let windowY = absoluteY;
 
-  // 确保不超出屏幕
-  const screenBounds = screen.getPrimaryDisplay().bounds;
-  windowX = Math.max(
-    10,
-    Math.min(windowX, screenBounds.width - windowWidth - 10)
-  );
-  windowY = Math.max(50, windowY);
+  // 找到文本块所在的显示器
+  const displays = screen.getAllDisplays();
+  let targetDisplay = screen.getPrimaryDisplay();
 
-  console.log(
-    `  📍 文本块 "${original}" (${absoluteX}, ${absoluteY}, ${width}x${height})`
+  for (const display of displays) {
+    const { x: dx, y: dy, width: dw, height: dh } = display.bounds;
+    if (
+      absoluteX >= dx &&
+      absoluteX < dx + dw &&
+      absoluteY >= dy &&
+      absoluteY < dy + dh
+    ) {
+      targetDisplay = display;
+      break;
+    }
+  }
+
+  const screenBounds = targetDisplay.bounds;
+
+  // 确保不超出当前显示器范围
+  windowX = Math.max(
+    screenBounds.x + 10,
+    Math.min(windowX, screenBounds.x + screenBounds.width - windowWidth - 10)
   );
-  console.log(
-    `     → 翻译窗口 "${translated}" 位置: (${windowX}, ${windowY}, ${windowWidth}x${windowHeight})`
-  );
+  windowY = Math.max(screenBounds.y + 50, windowY);
 
   const win = new BrowserWindow({
     x: windowX,
@@ -119,17 +139,15 @@ function createTranslationWindow(textBlock, regionX, regionY) {
     alwaysOnTop: true,
     resizable: false,
     skipTaskbar: true,
-    focusable: true, // 允许聚焦，才能拖动
-    movable: true, // 允许移动
+    hasShadow: false,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
     },
   });
 
-  win.setAlwaysOnTop(true, "pop-up-menu");
+  win.setAlwaysOnTop(true, "floating");
   win.setVisibleOnAllWorkspaces(true);
-  win.setIgnoreMouseEvents(false);
 
   win.loadFile(path.join(__dirname, "../views/translation-window.html"));
 
@@ -137,7 +155,7 @@ function createTranslationWindow(textBlock, regionX, regionY) {
     win.webContents.send("show-translation", {
       original,
       translated,
-      fontSize, // 传递计算的字体大小
+      fontSize,
     });
   });
 

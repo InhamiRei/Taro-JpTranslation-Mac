@@ -2,101 +2,22 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
-      body {
-        overflow: hidden;
-        pointer-events: none;
-      }
-
-      canvas {
-        display: block;
-      }
-    </style>
+    <link rel="stylesheet" href="../styles/common.css" />
+    <link rel="stylesheet" href="../styles/region-overlay.css" />
   </head>
   <body>
-    <canvas id="canvas"></canvas>
+    <div class="overlay-border dashed-border" id="border"></div>
 
     <script>
       const { ipcRenderer } = require("electron");
-
-      const canvas = document.getElementById("canvas");
-      const ctx = canvas.getContext("2d");
-
-      let region = null;
+      const border = document.getElementById("border");
 
       ipcRenderer.on("init-region", (event, data) => {
-        region = data;
-
-        canvas.width = data.width + 12;
-        canvas.height = data.height + 12;
-
-        draw();
+        border.style.width = data.width + "px";
+        border.style.height = data.height + "px";
+        border.style.left = "6px";
+        border.style.top = "6px";
       });
-
-      function draw() {
-        if (!region) return;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        const borderWidth = 6;
-        const rect = {
-          x: borderWidth,
-          y: borderWidth,
-          width: region.width,
-          height: region.height,
-        };
-
-        // 绘制外层发光边框
-        ctx.strokeStyle = "rgba(139, 92, 246, 0.5)";
-        ctx.lineWidth = 3;
-        ctx.strokeRect(rect.x - 2, rect.y - 2, rect.width + 4, rect.height + 4);
-
-        // 绘制内层虚线边框
-        ctx.strokeStyle = "rgba(168, 139, 251, 0.8)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([8, 4]);
-        ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
-        ctx.setLineDash([]);
-
-        // 绘制四个角标记
-        ctx.strokeStyle = "rgba(168, 85, 247, 0.8)";
-        ctx.lineWidth = 3;
-        const cornerSize = 15;
-
-        // 左上角
-        ctx.beginPath();
-        ctx.moveTo(rect.x, rect.y + cornerSize);
-        ctx.lineTo(rect.x, rect.y);
-        ctx.lineTo(rect.x + cornerSize, rect.y);
-        ctx.stroke();
-
-        // 右上角
-        ctx.beginPath();
-        ctx.moveTo(rect.x + rect.width - cornerSize, rect.y);
-        ctx.lineTo(rect.x + rect.width, rect.y);
-        ctx.lineTo(rect.x + rect.width, rect.y + cornerSize);
-        ctx.stroke();
-
-        // 左下角
-        ctx.beginPath();
-        ctx.moveTo(rect.x, rect.y + rect.height - cornerSize);
-        ctx.lineTo(rect.x, rect.y + rect.height);
-        ctx.lineTo(rect.x + cornerSize, rect.y + rect.height);
-        ctx.stroke();
-
-        // 右下角
-        ctx.beginPath();
-        ctx.moveTo(rect.x + rect.width - cornerSize, rect.y + rect.height);
-        ctx.lineTo(rect.x + rect.width, rect.y + rect.height);
-        ctx.lineTo(rect.x + rect.width, rect.y + rect.height - cornerSize);
-        ctx.stroke();
-      }
     </script>
   </body>
 </html>
