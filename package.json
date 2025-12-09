@@ -1,0 +1,19 @@
+{
+  "name": "taro-jptranslation-mac",
+  "version": "1.0.0",
+  "description": "日语游戏实时翻译工具 - Taro-JpTranslation-Mac",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --trace-warnings"
+  },
+  "keywords": ["translation", "ocr", "japanese"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "sharp": "^0.32.6"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0"
+  }
+}

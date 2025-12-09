@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        cursor: crosshair;
+        background: rgba(0, 0, 0, 0.05);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+          "PingFang SC", sans-serif;
+      }
+
+      .tip {
+        position: fixed;
+        top: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 12px 24px;
+        background: linear-gradient(
+          90deg,
+          rgba(99, 102, 241, 0.9),
+          rgba(168, 85, 247, 0.9)
+        );
+        color: white;
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 500;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        z-index: 10000;
+      }
+
+      .selection-box {
+        position: absolute;
+        border: 3px solid rgba(99, 102, 241, 1);
+        background: rgba(99, 102, 241, 0.1);
+        display: none;
+        pointer-events: none;
+      }
+
+      .corner {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border: 4px solid rgba(168, 85, 247, 1);
+      }
+
+      .corner.top-left {
+        top: -2px;
+        left: -2px;
+        border-right: none;
+        border-bottom: none;
+      }
+
+      .corner.top-right {
+        top: -2px;
+        right: -2px;
+        border-left: none;
+        border-bottom: none;
+      }
+
+      .corner.bottom-left {
+        bottom: -2px;
+        left: -2px;
+        border-right: none;
+        border-top: none;
+      }
+
+      .corner.bottom-right {
+        bottom: -2px;
+        right: -2px;
+        border-left: none;
+        border-top: none;
+      }
+
+      .size-info {
+        position: absolute;
+        top: -35px;
+        left: 5px;
+        padding: 6px 12px;
+        background: rgba(99, 102, 241, 0.9);
+        color: white;
+        border-radius: 5px;
+        font-size: 12px;
+        font-weight: bold;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="tip">🖱️ 拖动鼠标选择翻译区域 | ESC 取消</div>
+    <div class="selection-box" id="selectionBox">
+      <div class="corner top-left"></div>
+      <div class="corner top-right"></div>
+      <div class="corner bottom-left"></div>
+      <div class="corner bottom-right"></div>
+      <div class="size-info" id="sizeInfo"></div>
+    </div>
+
+    <script>
+      const { ipcRenderer } = require("electron");
+
+      const selectionBox = document.getElementById("selectionBox");
+      const sizeInfo = document.getElementById("sizeInfo");
+
+      let isSelecting = false;
+      let startX = 0;
+      let startY = 0;
+
+      let screenStartX = 0;
+      let screenStartY = 0;
+
+      document.addEventListener("mousedown", (e) => {
+        isSelecting = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        screenStartX = e.screenX;
+        screenStartY = e.screenY;
+        selectionBox.style.display = "block";
+      });
+
+      document.addEventListener("mousemove", (e) => {
+        if (!isSelecting) return;
+
+        const currentX = e.clientX;
+        const currentY = e.clientY;
+
+        const left = Math.min(startX, currentX);
+        const top = Math.min(startY, currentY);
+        const width = Math.abs(currentX - startX);
+        const height = Math.abs(currentY - startY);
+
+        selectionBox.style.left = left + "px";
+        selectionBox.style.top = top + "px";
+        selectionBox.style.width = width + "px";
+        selectionBox.style.height = height + "px";
+
+        sizeInfo.textContent = `📐 ${width} × ${height}`;
+      });
+
+      document.addEventListener("mouseup", (e) => {
+        if (!isSelecting) return;
+
+        isSelecting = false;
+
+        const screenCurrentX = e.screenX;
+        const screenCurrentY = e.screenY;
+
+        const screenLeft = Math.min(screenStartX, screenCurrentX);
+        const screenTop = Math.min(screenStartY, screenCurrentY);
+        const width = Math.abs(screenCurrentX - screenStartX);
+        const height = Math.abs(screenCurrentY - screenStartY);
+
+        if (width > 10 && height > 10) {
+          console.log("选择的屏幕坐标:", {
+            x: screenLeft,
+            y: screenTop,
+            width,
+            height,
+          });
+          ipcRenderer.send("region-selected", {
+            x: screenLeft,
+            y: screenTop,
+            width,
+            height,
+          });
+        } else {
+          ipcRenderer.send("cancel-selection");
+        }
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          ipcRenderer.send("cancel-selection");
+        }
+      });
+    </script>
+  </body>
+</html>

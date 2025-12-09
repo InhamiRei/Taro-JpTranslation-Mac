@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+          "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        background: transparent;
+      }
+
+      .translation-container {
+        /* 半透明背景 - 完全遮盖原文 */
+        background: linear-gradient(
+          135deg,
+          rgba(25, 25, 40, 0.92) 0%,
+          rgba(35, 35, 50, 0.88) 50%,
+          rgba(25, 25, 40, 0.92) 100%
+        );
+        backdrop-filter: blur(8px) saturate(120%);
+        -webkit-backdrop-filter: blur(8px) saturate(120%);
+
+        /* 边框效果 */
+        border: 1px solid rgba(100, 150, 255, 0.3);
+        border-radius: 5px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6),
+          inset 0 1px 0 rgba(255, 255, 255, 0.15);
+
+        /* 内容布局 */
+        padding: 4px 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 28px;
+        width: 100%;
+        height: 100%;
+        box-sizing: border-box;
+
+        /* 过渡动画 */
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .translation-container:hover {
+        background: linear-gradient(
+          135deg,
+          rgba(35, 40, 60, 0.95) 0%,
+          rgba(45, 50, 70, 0.92) 50%,
+          rgba(35, 40, 60, 0.95) 100%
+        );
+        border-color: rgba(120, 170, 255, 0.5);
+        box-shadow: 0 6px 28px rgba(0, 0, 0, 0.7),
+          inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        cursor: move;
+      }
+
+      .translation-text {
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        line-height: 1.5;
+
+        /* 文字发光效果 - 更清晰 */
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9),
+          0 0 12px rgba(255, 255, 255, 0.25), 0 0 20px rgba(120, 200, 255, 0.15);
+
+        -webkit-app-region: drag;
+      }
+
+      .original-text {
+        color: rgba(255, 255, 255, 0.65);
+        font-size: 11px;
+        margin-right: 8px;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+        -webkit-app-region: drag;
+      }
+
+      /* 淡入动画 */
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(-5px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .translation-container {
+        animation: fadeIn 0.3s ease-out;
+      }
+
+      /* 隐藏状态 */
+      .translation-container.hidden {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease-out;
+      }
+
+      .close-btn {
+        display: none; /* 隐藏关闭按钮，让界面更简洁 */
+      }
+    </style>
+  </head>
+  <body>
+    <div class="translation-container">
+      <div class="translation-text" id="translated"></div>
+    </div>
+
+    <script>
+      const { ipcRenderer } = require("electron");
+
+      ipcRenderer.on("show-translation", (event, data) => {
+        const translatedEl = document.getElementById("translated");
+        translatedEl.textContent = data.translated;
+
+        // 应用动态字体大小
+        if (data.fontSize) {
+          translatedEl.style.fontSize = data.fontSize + "px";
+          // 调整行高以匹配
+          translatedEl.style.lineHeight =
+            Math.round(data.fontSize * 1.3) + "px";
+        }
+      });
+    </script>
+  </body>
+</html>
