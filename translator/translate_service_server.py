@@ -158,13 +158,24 @@ def translate_region(
         print(f"🌐 开始翻译 ({len(result)} 个文本块)...", file=sys.stderr, flush=True)
         trans_start = __import__('time').time()
         
+        translations = []
+        
         # 优先使用Qwen翻译器（支持批量翻译和OCR修正）
         if qwen_translator and qwen_translator.available:
             print(f"   使用Qwen翻译器（批量模式 + OCR修正）", file=sys.stderr, flush=True)
             texts = [item['text'] for item in result]
-            translations = qwen_translator.translate_batch(texts, fix_ocr=True)
-        else:
-            # 降级到百度API（逐个翻译）
+            try:
+                translations = qwen_translator.translate_batch(texts, fix_ocr=True)
+                # 检查是否有翻译失败
+                failed_count = sum(1 for t in translations if t.startswith('翻译失败'))
+                if failed_count > 0:
+                    raise Exception(f"Qwen翻译失败 {failed_count} 个文本块")
+            except Exception as e:
+                print(f"⚠️ Qwen翻译失败，降级到百度翻译: {e}", file=sys.stderr, flush=True)
+                translations = []
+        
+        # 降级到百度API（逐个翻译）
+        if not translations or any(t.startswith('翻译失败') for t in translations):
             print(f"   使用百度翻译API（逐个模式）", file=sys.stderr, flush=True)
             translations = []
             for item in result:

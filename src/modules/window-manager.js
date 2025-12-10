@@ -91,17 +91,26 @@ function createTranslationWindow(textBlock, regionX, regionY) {
   const absoluteX = regionX + x;
   const absoluteY = regionY + y;
 
-  // 根据原文高度计算字体大小（比例约为 height * 0.7）
-  const fontSize = Math.max(Math.round(height * 0.7), 12); // 最小12px
-  const padding = Math.max(Math.round(height * 0.15), 4); // 内边距
+  // 固定字体大小 - 保证显示一致性
+  const fontSize = 16; // 固定16px，清晰易读
+  const lineHeight = 22; // 固定行高
 
-  // 窗口尺寸精确匹配原文
-  const windowWidth = width + padding * 2;
-  const windowHeight = height + padding;
+  // 固定窗口高度
+  const windowHeight = 32; // 固定高度，适合单行文本
 
-  // 精准覆盖在原文位置上
-  let windowX = absoluteX;
-  let windowY = absoluteY;
+  // 根据文本长度估算宽度（中文每字符约16px + padding）
+  const estimatedWidth = Math.ceil(translated.length * 16 + 24);
+  // 设置最小和最大宽度
+  const minWidth = 80;
+  const maxWidth = 800;
+  const windowWidth = Math.max(minWidth, Math.min(estimatedWidth, maxWidth));
+
+  // 覆盖在原文位置上，水平居中对齐，垂直居中对齐
+  // X: 翻译窗口相对原文中心对齐
+  let windowX = absoluteX + Math.floor(width / 2) - Math.floor(windowWidth / 2);
+  // Y: 翻译窗口相对原文中心对齐（避免偏下）
+  let windowY =
+    absoluteY + Math.floor(height / 2) - Math.floor(windowHeight / 2);
 
   // 找到文本块所在的显示器
   const displays = screen.getAllDisplays();
@@ -156,6 +165,7 @@ function createTranslationWindow(textBlock, regionX, regionY) {
       original,
       translated,
       fontSize,
+      lineHeight,
     });
   });
 

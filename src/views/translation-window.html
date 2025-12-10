@@ -17,11 +17,12 @@
         const translatedEl = document.getElementById("translated");
         translatedEl.textContent = data.translated;
 
-        // 应用动态字体大小
+        // 应用固定字体大小和行高
         if (data.fontSize) {
           translatedEl.style.fontSize = data.fontSize + "px";
-          translatedEl.style.lineHeight =
-            Math.round(data.fontSize * 1.3) + "px";
+        }
+        if (data.lineHeight) {
+          translatedEl.style.lineHeight = data.lineHeight + "px";
         }
       });
     </script>

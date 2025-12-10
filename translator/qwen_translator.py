@@ -75,6 +75,19 @@ class QwenTranslator:
             print(f"❌ Ollama调用失败: {e}", file=sys.stderr)
             return None
     
+    def _clean_translation(self, text: str) -> str:
+        """清理翻译结果，只处理明显的后缀解释"""
+        # 只处理省略号后跟随的明显解释文本
+        # 例如："自动... 解释内容" -> "自动"
+        # 但保留原文中正常的省略号
+        if '...' in text:
+            parts = text.split('...')
+            # 如果省略号后面有明显的解释性文字（较长），则截断
+            if len(parts) > 1 and len(parts[1]) > 5:
+                text = parts[0]
+        
+        return text.strip()
+    
     def translate(self, text: str, fix_ocr=True) -> str:
         """
         翻译单个文本
@@ -101,15 +114,17 @@ class QwenTranslator:
 
 原文：{text}
 
-请直接输出翻译结果，不要包含任何解释。"""
+重要：只输出翻译后的中文结果，不要添加任何括号注释、解释说明或其他额外内容。"""
         else:
             prompt = f"""将以下日语翻译成简体中文，保持原文语气：
 
 {text}
 
-请直接输出翻译结果。"""
+重要：只输出翻译结果，不要添加任何解释或注释。"""
         
         result = self._call_ollama(prompt)
+        if result:
+            result = self._clean_translation(result)
         return result if result else f"翻译失败: {text}"
     
     def translate_batch(self, texts: List[str], fix_ocr=True) -> List[str]:
@@ -146,16 +161,16 @@ class QwenTranslator:
 原文列表：
 {numbered_texts}
 
-请按照相同编号输出翻译结果，格式如下：
-1. [翻译结果1]
-2. [翻译结果2]
-..."""
+重要：请严格按照相同编号输出翻译结果，每行一个翻译，不要添加任何括号注释、解释说明或其他额外内容。
+格式示例：
+1. 翻译结果1
+2. 翻译结果2"""
         else:
             prompt = f"""将以下日语文本翻译成简体中文：
 
 {numbered_texts}
 
-请按照相同编号输出翻译结果。"""
+重要：请严格按照相同编号输出翻译结果，每行一个翻译，不要添加任何解释或注释。"""
         
         result = self._call_ollama(prompt)
         
@@ -186,10 +201,12 @@ class QwenTranslator:
             if line[0].isdigit() and '. ' in line:
                 # 移除编号
                 _, trans = line.split('. ', 1)
-                translations.append(trans.strip())
+                trans = self._clean_translation(trans.strip())
+                translations.append(trans)
             elif line:
                 # 如果没有编号，直接添加
-                translations.append(line)
+                trans = self._clean_translation(line)
+                translations.append(trans)
         
         # 确保返回正确数量的翻译
         if len(translations) < expected_count:
