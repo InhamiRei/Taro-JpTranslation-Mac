@@ -21,12 +21,12 @@ if __name__ == '__main__':
     # 加载配置
     config = Config()
     
-    # 初始化OCR引擎（会触发模型下载）
+    # Initialize OCR engine
     print("\n📦 初始化OCR引擎...", file=sys.stderr)
     ocr = OCREngine(
         lang='japan',
-        use_gpu=True,  # 启用MPS GPU加速
-        confidence_threshold=0.5  # 置信度过滤
+        use_textline_orientation=True,
+        confidence_threshold=0.5
     )
     
     if ocr.ocr is not None:

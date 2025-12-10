@@ -91,13 +91,13 @@ def init_services() -> None:
         )
         print("✅ 百度翻译就绪（备用翻译引擎）", file=sys.stderr, flush=True)
     
-    # 初始化OCR引擎（启用GPU和置信度过滤）
+    # 初始化OCR引擎（PaddleOCR）
     if ocr is None:
         print("🔧 初始化OCR引擎...", file=sys.stderr, flush=True)
         ocr = OCREngine(
             lang='japan',
-            use_gpu=True,  # 启用MPS GPU加速
-            confidence_threshold=0.5  # 置信度阈值
+            use_textline_orientation=True,
+            confidence_threshold=0.5
         )
         print("✅ OCR引擎就绪", file=sys.stderr, flush=True)
     else:
@@ -139,11 +139,11 @@ def translate_region(
         # 确保服务已初始化
         init_services()
         
-        # OCR识别（启用图像预处理）
+        # OCR识别（PaddleOCR自动检测多文本块）
         print(f"🔍 开始OCR识别...", file=sys.stderr, flush=True)
         start_time = __import__('time').time()
         
-        result = ocr.recognize(screenshot_path, preprocess=False)  # 关闭预处理，避免过度处理
+        result = ocr.recognize(screenshot_path)
         
         ocr_time = __import__('time').time() - start_time
         print(f"✅ OCR完成 ({ocr_time:.2f}s)", file=sys.stderr, flush=True)

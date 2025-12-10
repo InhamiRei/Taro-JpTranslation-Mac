@@ -1,10 +1,10 @@
-# OCR识别 - EasyOCR对日语支持最好
-easyocr>=1.7.0
+# OCR
+paddleocr>=2.7.0
+paddlepaddle>=2.6.0
 
-# 图像处理
+# Image
 Pillow>=10.0.0
-opencv-python>=4.8.0  # 用于二值化和图像预处理
 
-# 翻译API
+# Translation
 requests>=2.31.0
-ollama>=0.6.0  # Qwen本地翻译器
+ollama>=0.6.0

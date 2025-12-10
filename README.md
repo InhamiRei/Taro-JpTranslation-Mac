@@ -6,8 +6,8 @@
 ## ✨ 功能特性
 
 - 🎯 **区域选择** - 框选需要翻译的屏幕区域
-- 🔍 **OCR 识别** - 使用 EasyOCR 识别日语文本（平假名、片假名、汉字）
-- 🌐 **在线翻译** - 百度翻译 API，准确度高
+- 🔍 **OCR 识别** - 使用 PaddleOCR 识别日语文本（平假名、片假名、汉字）
+- 🌐 **智能翻译** - Qwen 本地大模型翻译（主）+ 百度翻译 API（备用）
 - 💎 **精准覆盖** - 翻译直接覆盖原文位置，字体大小自动匹配
 - 👁️ **显示切换** - 随时切换显示/隐藏对比原文
 
@@ -28,8 +28,9 @@ jpTranslation/
 │
 ├── translator/                   # Python 后端代码
 │   ├── translate_service_server.py # 翻译服务主程序
-│   ├── ocr_engine.py            # OCR 引擎封装
-│   └── baidu_translator.py      # 百度翻译API
+│   ├── ocr_engine.py            # PaddleOCR 引擎封装
+│   ├── qwen_translator.py       # Qwen 本地翻译（主）
+│   └── baidu_translator.py      # 百度翻译API（备用）
 │
 ├── config.py                    # 配置文件
 ├── requirements.txt             # Python 依赖
@@ -97,16 +98,19 @@ EOF
 ### 后端
 
 - **Python 3.12+**
-- **EasyOCR** - OCR 文字识别
+- **PaddleOCR** - 高性能 OCR 文字识别
+- **Ollama + Qwen2.5** - 本地大模型翻译（主翻译引擎）
+- **百度翻译 API** - 在线翻译（备用引擎）
 - **Pillow** - 图像处理
 - **Requests** - HTTP 请求
 
 ## 📊 性能
 
-- **首次翻译**：5-8 秒（初始化 OCR 模型）
-- **后续翻译**：1-2 秒（使用缓存实例）
-- **OCR 精度**：99%+（日语识别）
-- **内存占用**：~300MB
+- **首次翻译**：约 15 秒（初始化 PaddleOCR + Qwen 模型）
+- **后续翻译**：5-10 秒（OCR 5 秒 + Qwen 翻译 5 秒）
+- **OCR 精度**：95%+（PaddleOCR 日语识别）
+- **翻译质量**：使用 Qwen2.5-7B 本地模型，理解上下文更准确
+- **内存占用**：~1GB（包含 OCR 和 Qwen 模型）
 
 ## 📄 许可证
 

@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Qwen本地翻译器 - 通过Ollama调用Qwen2.5模型
-支持：
-- OCR错误修正
-- 高质量日中翻译
-- 批量翻译优化
+Qwen Translator - Local translation via Ollama
 """
 import sys
 import json
@@ -225,29 +221,3 @@ class QwenTranslator:
             result['translated'] = translation
         
         return ocr_results
-
-
-# 测试代码
-if __name__ == '__main__':
-    translator = QwenTranslator()
-    
-    if translator.available:
-        # 测试单个翻译
-        test_text = "予期せぬエラーが発生しました"
-        result = translator.translate(test_text)
-        print(f"\n单个翻译测试:")
-        print(f"原文: {test_text}")
-        print(f"译文: {result}")
-        
-        # 测试批量翻译
-        test_texts = [
-            "予期せぬエラーが発生しました",
-            "お手数ですが、しばらく時間をおいてからお試しください",
-            "ありがとうございます"
-        ]
-        results = translator.translate_batch(test_texts)
-        print(f"\n批量翻译测试:")
-        for orig, trans in zip(test_texts, results):
-            print(f"{orig} → {trans}")
-    else:
-        print("Qwen翻译器不可用，请先安装Ollama并下载模型")
