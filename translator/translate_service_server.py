@@ -228,7 +228,65 @@ def translate_region(
 # 主程序入口
 # ============================================================================
 
-if __name__ == '__main__':
+def run_daemon_mode():
+    """
+    常驻服务模式 - 持续监听stdin接收翻译请求
+    
+    通信协议：
+        - 输入：每行一个JSON请求，格式如下：
+          {"screenshot_path": "...", "x": 0, "y": 0, "width": 100, "height": 100}
+        - 输出：每行一个JSON响应，格式如下：
+          {"success": true, "textBlocks": [...]}
+    
+    优势：
+        - 进程只启动一次，所有服务实例缓存复用
+        - 首次翻译 5-8秒，后续翻译 1-2秒
+    """
+    print("🚀 翻译服务已启动（常驻模式）", file=sys.stderr, flush=True)
+    
+    # 预先初始化所有服务
+    init_services()
+    print("✅ 所有服务初始化完成，等待翻译请求...\n", file=sys.stderr, flush=True)
+    
+    # 持续监听stdin
+    for line in sys.stdin:
+        try:
+            # 解析请求
+            request = json.loads(line.strip())
+            screenshot_path = request['screenshot_path']
+            region_x = request['x']
+            region_y = request['y']
+            region_width = request['width']
+            region_height = request['height']
+            
+            # 执行翻译
+            text_blocks = translate_region(
+                screenshot_path,
+                region_x,
+                region_y,
+                region_width,
+                region_height
+            )
+            
+            # 输出JSON结果
+            result = {
+                'success': True,
+                'textBlocks': text_blocks
+            }
+            print(json.dumps(result, ensure_ascii=False), flush=True)
+            
+        except json.JSONDecodeError as e:
+            error_result = {'success': False, 'error': f'JSON解析失败: {str(e)}'}
+            print(json.dumps(error_result, ensure_ascii=False), flush=True)
+        except Exception as e:
+            error_result = {'success': False, 'error': f'处理请求失败: {str(e)}'}
+            print(json.dumps(error_result, ensure_ascii=False), flush=True)
+
+
+def run_single_mode():
+    """
+    单次模式 - 兼容旧的命令行调用方式
+    """
     # 检查命令行参数
     if len(sys.argv) < 6:
         error_result = {'error': '参数不足，需要5个参数：screenshot_path x y width height'}
@@ -257,3 +315,13 @@ if __name__ == '__main__':
         'textBlocks': text_blocks
     }
     print(json.dumps(result, ensure_ascii=False), flush=True)
+
+
+if __name__ == '__main__':
+    # 判断运行模式
+    if len(sys.argv) == 2 and sys.argv[1] == '--daemon':
+        # 常驻服务模式（推荐）
+        run_daemon_mode()
+    else:
+        # 单次模式（兼容旧版本）
+        run_single_mode()

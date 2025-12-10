@@ -14,6 +14,7 @@ const {
 const {
   captureRegion,
   callPythonTranslate,
+  stopPythonDaemon,
 } = require("./modules/translation-handler");
 const {
   registerShortcuts,
@@ -129,6 +130,12 @@ async function handleTranslate() {
   if (!monitoredRegion) return;
 
   try {
+    // 先关闭所有旧翻译窗口，避免OCR识别到旧翻译
+    closeAllTranslationWindows();
+
+    // 等待一小段时间让窗口完全关闭
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
     const screenshotPath = await captureRegion(monitoredRegion);
     const result = await callPythonTranslate(screenshotPath, monitoredRegion);
 
@@ -186,4 +193,5 @@ app.on("will-quit", () => {
   unregisterShortcuts();
   closeAllTranslationWindows();
   if (regionOverlay) regionOverlay.close();
+  stopPythonDaemon(); // 停止常驻Python服务
 });
