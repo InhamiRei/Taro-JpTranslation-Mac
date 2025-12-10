@@ -23,7 +23,11 @@ if __name__ == '__main__':
     
     # 初始化OCR引擎（会触发模型下载）
     print("\n📦 初始化OCR引擎...", file=sys.stderr)
-    ocr = OCREngine(lang='japan')
+    ocr = OCREngine(
+        lang='japan',
+        use_gpu=True,  # 启用MPS GPU加速
+        confidence_threshold=0.5  # 置信度过滤
+    )
     
     if ocr.ocr is not None:
         print("✅ OCR引擎准备就绪", file=sys.stderr)

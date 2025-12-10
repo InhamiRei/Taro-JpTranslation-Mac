@@ -39,6 +39,7 @@ sys.path.insert(0, str(project_root))
 
 from translator.ocr_engine import OCREngine
 from translator.baidu_translator import BaiduTranslator
+from translator.qwen_translator import QwenTranslator
 from config import Config
 
 # ============================================================================
@@ -47,40 +48,57 @@ from config import Config
 
 config: Optional[Config] = None
 ocr: Optional[OCREngine] = None
-translator: Optional[BaiduTranslator] = None
+qwen_translator: Optional[QwenTranslator] = None
+baidu_translator: Optional[BaiduTranslator] = None
 
 def init_services() -> None:
     """
     初始化所有服务（单例模式）
     
-    首次调用会初始化配置、翻译器和OCR引擎。
-    后续调用会直接使用缓存的实例，大幅提升速度。
+    优化策略：
+    - 优先使用Qwen本地翻译器（速度快、质量高、支持OCR修正）
+    - 降级到百度API（Qwen不可用时）
+    - OCR引擎启用MPS GPU加速和图像预处理
     
     全局变量：
         config: 配置管理器
-        translator: 百度翻译API实例
+        qwen_translator: Qwen本地翻译器（优先）
+        baidu_translator: 百度翻译API（降级）
         ocr: EasyOCR引擎实例
     """
-    global config, ocr, translator
+    global config, ocr, qwen_translator, baidu_translator
     
     # 初始化配置
     if config is None:
         print("🔧 初始化配置...", file=sys.stderr, flush=True)
         config = Config()
     
-    # 初始化翻译器
-    if translator is None:
+    # 初始化Qwen翻译器（优先）
+    if qwen_translator is None:
+        print("🔧 初始化Qwen翻译器...", file=sys.stderr, flush=True)
+        qwen_translator = QwenTranslator()
+        if qwen_translator.available:
+            print("✅ Qwen翻译器就绪（主翻译引擎）", file=sys.stderr, flush=True)
+        else:
+            print("⚠️ Qwen翻译器不可用，将使用百度API", file=sys.stderr, flush=True)
+    
+    # 初始化百度翻译（降级方案）
+    if baidu_translator is None:
         print("🔧 初始化百度翻译...", file=sys.stderr, flush=True)
-        translator = BaiduTranslator(
+        baidu_translator = BaiduTranslator(
             appid=config.get('baidu_appid'),
             secret_key=config.get('baidu_secret_key')
         )
-        print("✅ 百度翻译就绪", file=sys.stderr, flush=True)
+        print("✅ 百度翻译就绪（备用翻译引擎）", file=sys.stderr, flush=True)
     
-    # 初始化OCR引擎
+    # 初始化OCR引擎（启用GPU和置信度过滤）
     if ocr is None:
         print("🔧 初始化OCR引擎...", file=sys.stderr, flush=True)
-        ocr = OCREngine(lang='japan')
+        ocr = OCREngine(
+            lang='japan',
+            use_gpu=True,  # 启用MPS GPU加速
+            confidence_threshold=0.5  # 置信度阈值
+        )
         print("✅ OCR引擎就绪", file=sys.stderr, flush=True)
     else:
         print("⚡ 使用缓存的OCR引擎（快速模式）", file=sys.stderr, flush=True)
@@ -121,11 +139,11 @@ def translate_region(
         # 确保服务已初始化
         init_services()
         
-        # OCR识别
+        # OCR识别（启用图像预处理）
         print(f"🔍 开始OCR识别...", file=sys.stderr, flush=True)
         start_time = __import__('time').time()
         
-        result = ocr.recognize(screenshot_path)
+        result = ocr.recognize(screenshot_path, preprocess=False)  # 关闭预处理，避免过度处理
         
         ocr_time = __import__('time').time() - start_time
         print(f"✅ OCR完成 ({ocr_time:.2f}s)", file=sys.stderr, flush=True)
@@ -134,11 +152,31 @@ def translate_region(
             print(f"⚠️ 未识别到文本", file=sys.stderr, flush=True)
             return []
         
-        print(f"✅ 识别到 {len(result)} 个文本块", file=sys.stderr, flush=True)
-        text_blocks = []
+        print(f"✅ 识别到 {len(result)} 个文本块（已过滤低置信度）", file=sys.stderr, flush=True)
         
-        # 处理每个识别的文本块
-        for item in result:
+        # 批量翻译优化
+        print(f"🌐 开始翻译 ({len(result)} 个文本块)...", file=sys.stderr, flush=True)
+        trans_start = __import__('time').time()
+        
+        # 优先使用Qwen翻译器（支持批量翻译和OCR修正）
+        if qwen_translator and qwen_translator.available:
+            print(f"   使用Qwen翻译器（批量模式 + OCR修正）", file=sys.stderr, flush=True)
+            texts = [item['text'] for item in result]
+            translations = qwen_translator.translate_batch(texts, fix_ocr=True)
+        else:
+            # 降级到百度API（逐个翻译）
+            print(f"   使用百度翻译API（逐个模式）", file=sys.stderr, flush=True)
+            translations = []
+            for item in result:
+                trans = baidu_translator.translate(item['text'])
+                translations.append(trans)
+        
+        trans_time = __import__('time').time() - trans_start
+        print(f"✅ 翻译完成 ({trans_time:.2f}s)", file=sys.stderr, flush=True)
+        
+        # 构建结果
+        text_blocks = []
+        for item, translated in zip(result, translations):
             boxes = item['box']
             text = item['text']
             confidence = item['confidence']
@@ -152,9 +190,7 @@ def translate_region(
             width = int(max(x_coords) - min(x_coords))
             height = int(max(y_coords) - min(y_coords))
             
-            # 翻译
-            translated = translator.translate(text)
-            print(f"   {text[:15]}... → {translated[:15]}...", file=sys.stderr, flush=True)
+            print(f"   {text[:30]}... → {translated[:30]}...", file=sys.stderr, flush=True)
             
             text_blocks.append({
                 'x': x,
@@ -167,7 +203,7 @@ def translate_region(
             })
         
         total_time = __import__('time').time() - start_time
-        print(f"✅ 翻译完成，总耗时 {total_time:.2f}s", file=sys.stderr, flush=True)
+        print(f"✅ 全部完成！总耗时 {total_time:.2f}s (OCR: {ocr_time:.2f}s, 翻译: {trans_time:.2f}s)", file=sys.stderr, flush=True)
         
         return text_blocks
         

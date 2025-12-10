@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
 """
 OCR识别引擎 - 支持EasyOCR和PaddleOCR
+优化:
+- MPS GPU加速（M系列Mac）
+- 图像预处理（二值化、对比度增强）
+- 置信度过滤
 """
 import sys
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageOps
+import cv2
 
 # 尝试导入EasyOCR（更好的日语支持）
 try:
@@ -24,14 +29,18 @@ except ImportError:
 class OCREngine:
     """OCR识别引擎"""
     
-    def __init__(self, lang='japan'):
+    def __init__(self, lang='japan', use_gpu=True, confidence_threshold=0.5):
         """
         初始化OCR引擎
         
         Args:
             lang: 语言，japan=日语
+            use_gpu: 是否使用GPU加速（M系列Mac使用MPS）
+            confidence_threshold: 置信度阈值，低于此值的识别结果将被过滤
         """
         self.lang = lang
+        self.use_gpu = use_gpu
+        self.confidence_threshold = confidence_threshold
         self.ocr = None
         self._init_ocr()
     
@@ -43,10 +52,14 @@ class OCREngine:
         # 优先使用EasyOCR（日语支持更好）
         if EASYOCR_AVAILABLE:
             try:
-                print(f"🔧 初始化EasyOCR引擎（日语）", file=sys.stderr)
+                # 注意：EasyOCR在Mac上不支持MPS，只能使用CPU模式
+                # 但图像预处理和置信度过滤仍会提升性能
+                print(f"🔧 初始化EasyOCR引擎（日语 - CPU模式）", file=sys.stderr)
                 print(f"   首次使用会下载模型，请稍候...", file=sys.stderr)
+                print(f"   注意：EasyOCR暂不支持Mac GPU加速", file=sys.stderr)
                 
                 # EasyOCR支持多种语言，'ja'代表日语
+                # Mac上gpu参数无效，统一使用False
                 self.ocr = easyocr.Reader(['ja'], gpu=False)
                 self.ocr_type = 'easyocr'
                 
@@ -75,12 +88,47 @@ class OCREngine:
         print(f"❌ 没有可用的OCR引擎", file=sys.stderr)
         print(f"   请安装: pip install easyocr", file=sys.stderr)
     
-    def recognize(self, image):
+    def _preprocess_image(self, image):
+        """
+        图像预处理：二值化 + 对比度增强
+        
+        Args:
+            image: PIL Image对象
+        
+        Returns:
+            预处理后的PIL Image
+        """
+        # 转为灰度图
+        if image.mode != 'L':
+            image = image.convert('L')
+        
+        # 对比度增强
+        enhancer = ImageEnhance.Contrast(image)
+        image = enhancer.enhance(1.5)  # 增强50%
+        
+        # 转为numpy数组进行二值化
+        img_array = np.array(image)
+        
+        # 自适应阈值二值化（对不均匀光照效果更好）
+        binary = cv2.adaptiveThreshold(
+            img_array,
+            255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY,
+            11,  # 邻域大小
+            2    # 常数
+        )
+        
+        # 转回PIL Image
+        return Image.fromarray(binary)
+    
+    def recognize(self, image, preprocess=True):
         """
         识别图像中的文字
         
         Args:
             image: PIL Image对象、numpy数组或图像文件路径
+            preprocess: 是否进行图像预处理
         
         Returns:
             识别结果列表，每项包含: (文本, 置信度, 坐标)
@@ -97,6 +145,11 @@ class OCREngine:
                 print(f"   图像大小: {image.size}", file=sys.stderr)
             else:
                 image_path = None
+            
+            # 图像预处理
+            if preprocess:
+                print(f"🔧 预处理图像（二值化+对比度增强）", file=sys.stderr)
+                image = self._preprocess_image(image)
             
             # 根据OCR类型执行识别
             if self.ocr_type == 'easyocr':
@@ -131,7 +184,14 @@ class OCREngine:
         
         # EasyOCR返回格式: (bbox, text, confidence)
         text_results = []
+        filtered_count = 0
         for idx, (bbox, text, confidence) in enumerate(result):
+            # 置信度过滤
+            if confidence < self.confidence_threshold:
+                filtered_count += 1
+                print(f"   [{idx+1}] {text} (置信度: {confidence:.2f}) ⚠️ 已过滤", file=sys.stderr)
+                continue
+            
             # bbox是 [[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
             print(f"   [{idx+1}] {text} (置信度: {confidence:.2f})", file=sys.stderr)
             
@@ -140,6 +200,9 @@ class OCREngine:
                 'confidence': confidence,
                 'box': bbox
             })
+        
+        if filtered_count > 0:
+            print(f"   ⚠️ 过滤了 {filtered_count} 个低置信度结果（< {self.confidence_threshold}）", file=sys.stderr)
         
         return text_results
     

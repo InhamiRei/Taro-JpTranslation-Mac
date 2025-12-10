@@ -3,6 +3,8 @@ easyocr>=1.7.0
 
 # 图像处理
 Pillow>=10.0.0
+opencv-python>=4.8.0  # 用于二值化和图像预处理
 
 # 翻译API
 requests>=2.31.0
+ollama>=0.6.0  # Qwen本地翻译器
